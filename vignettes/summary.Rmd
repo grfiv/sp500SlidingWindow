@@ -1,0 +1,188 @@
+---
+title: "Sliding-Window Investment Analysis"
+author: "George Fisher"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{summary}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+```{r knitropts, echo = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(collapse = TRUE,              # hadley
+                      comment  = "#>",              # hadley
+                      error=TRUE, purl=FALSE,       # to be able to see errors
+                      fig.width=7.25, fig.height=6) # nice-sized pictures
+```
+# Scenario   
+
+We are facing retirement, having to live off a lump sum we have invested. How much can we withdraw each year adjusted for inflation?
+
+## Parameters
+
+    * we are 65 years old   
+    * we expect to live for 30 years   
+    * we expect 2.5% annual inflation
+    * we expect to pay brokerage fees of 1.25%   
+    
+    
+```{r parameters, message=FALSE}
+# function-specific parameters
+library(sp500SlidingWindow)
+window_width <- 30           # life expectancy
+annual_fee   <- 0.0125       # brokerage fees
+output_path  <- paste0(tempdir(), "/")
+
+# analysis-specific parameters
+current_age        <- 65            # starting age
+annual_inflation   <- 0.025         # annual inflation
+initial_investment <- 2000000       # our nest egg
+
+# withdraw this much each year
+withdrawal_percent <- 0.03171
+initial_withdrawal <- initial_investment * withdrawal_percent       
+```   
+
+## Investment vector
+
+We retire with this much money to live on for the rest of our 'window_width'-year life
+
+```{r investmentvector}
+investment_vector <- c(initial_investment,
+                       rep(0,window_width-1))
+
+fmt(investment_vector)
+```
+
+## Withdrawal vector
+
+We hope to spend the initial_withdrawal adjusted for inflation each year
+
+```{r withdrawalvector}
+withdrawal_vector <- sapply(0:(window_width-1), function(i) {
+    return(initial_withdrawal * (1 + annual_inflation)**i)
+})
+
+# total amount we hope to withdraw over the whole period
+total_hoped_for_wdr <- sum(withdrawal_vector)
+fmt(total_hoped_for_wdr)
+
+# year-by-year hoped-for withdrawals
+fmt(withdrawal_vector)
+```
+
+
+# Sliding Window Analysis
+
+The idea of sliding-window analysis is to ask how a certain set of annual investments and withdrawals would perform in each of the periods of a certain width of the stock market.
+
+We are simulating a brokerage cash account so the balance can never go below zero. If the withdrawal vector calls for an amount greater than the current balance, the remaining balance is withdrawn and the balance is set to zero.
+
+The analysis invests the lump sum at the beginning of each window and tracks the effect of the stock market on that investment, making inflation-adjusted withdrawals each year. The critical question is whether the investor will run out of money.
+
+## Uninvested results
+
+If we do not invest the lump sum but simply spend it down, what will be the result?
+
+```{r remainingbalanceplot}
+remaining_amt    <- initial_investment
+ages             <- current_age:(window_width+current_age-1)
+remaining_amount <- sapply(1:window_width, function(i) {
+    remaining_amt <<- remaining_amt - withdrawal_vector[i]
+    return(remaining_amt)
+})
+
+# test if we go below zero
+if (length(which(remaining_amount<=0))) {
+    # goes below zero
+    plot_points = TRUE
+    busted_age <- current_age+which(remaining_amount<=0)[1]-1
+    sub = paste0("Run out of money at age ", busted_age)
+} else {
+    # does not go below zero
+    plot_points = FALSE
+    sub="Starting amount covers withdrawals without investment"
+}
+
+ylim <- c(min(min(remaining_amount, 0)), initial_investment)
+plot(ages, remaining_amount, pch=20,
+     xlab="Age", ylab=NA, yaxt="n", ylim=ylim,
+     main="What if I simply live off the cash?",
+     sub=sub)
+if (plot_points) {
+    points(which(remaining_amount<=0)+current_age-1, 
+           remaining_amount[which(remaining_amount<=0)], col="red", pch=20)
+    abline(v=busted_age, col="red", lty=2)
+    abline(h=0, col="red", lty=2)
+}
+
+axis(2, las=2, at=axTicks(2), labels=fmt(axTicks(2)), cex.axis=0.72)
+grid()
+```
+
+# Sliding Window Analysis
+```{r slidingwindow}
+window_df <- sp500SlidingWindow(investment_vector,
+                                withdrawal_vector,
+                                window_width = window_width,
+                                annual_fee   = annual_fee,
+                                output_path  = output_path)
+
+#knitr::kable(window_df)
+```
+
+#### Number of failed periods `r length(which(window_df$ending_bal <= 0))`; `r paste0(round((1-(length(which(window_df$ending_bal <= 0))/nrow(window_df)))*100,0), "%")` percent success
+
+## How are the results distributed?
+
+```{r distribution}
+plot_ending_bal_distribution(window_df, NULL, window_width)
+```
+
+## Worst Period
+
+```{r worstyearplot}
+library(png)
+worst_period <- which.min(window_df$wdr)
+
+worst_year_path <- paste0(output_path, 
+                          window_df$start_year[worst_period], "-",
+                          window_df$end_year[worst_period], ".png")
+pp <- readPNG(worst_year_path, native = TRUE, info = TRUE)
+plot(0:1, 0:1, type="n", ann=FALSE, axes=FALSE)
+rasterImage(pp, 0, 0, 1, 1)
+```
+
+## Best Period 
+
+```{r bestyearplot}
+best_period  <- which.max(window_df$ending_bal)
+
+best_year_path <- paste0(output_path, 
+                          window_df$start_year[best_period], "-",
+                          window_df$end_year[best_period], ".png")
+pp <- readPNG(best_year_path, native = TRUE, info = TRUE)
+plot(0:1, 0:1, type="n", ann=FALSE, axes=FALSE)
+rasterImage(pp, 0, 0, 1, 1)
+```
+
+## Modal (Most-Likely) Period
+
+```{r modalyearplot}
+bal_hist_obj    <- hist(window_df$ending_bal, plot=FALSE)
+mod_end_bal     <- bal_hist_obj$mids[which.max(bal_hist_obj$counts)]
+mod_window_idx  <- which.min(abs(window_df$ending_bal - mod_end_bal))
+closest_mod_bal <- window_df$ending_bal[mod_window_idx]
+
+mode_year_path <- paste0(output_path, 
+                          window_df$start_year[mod_window_idx], "-",
+                          window_df$end_year[mod_window_idx], ".png")
+pp <- readPNG(mode_year_path, native = TRUE, info = TRUE)
+plot(0:1, 0:1, type="n", ann=FALSE, axes=FALSE)
+rasterImage(pp, 0, 0, 1, 1)
+```
+
+

@@ -1,0 +1,16 @@
+citHeader("To cite sp500SlidingWindow please use:")
+
+citEntry(
+  entry        = "Misc",
+  title        = "Sliding Window Investment Analysis",
+  author       = personList(as.person("George Fisher")),
+  year         = "2016",
+  howpublished = "https://github.com/grfiv/sp500SlidingWindow",
+  note         = "Test the results of any given investment/expense combinations for
+a series of sliding-window periods of the S&P500 from 1950 to the present.",
+
+  textVersion  =
+  paste("George Fisher (2016)",
+        "Sliding Window Investment Analysis",
+        "URL https://github.com/grfiv/sp500SlidingWindow")
+        )

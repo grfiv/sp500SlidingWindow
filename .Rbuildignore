@@ -1,0 +1,12 @@
+^packrat/
+^\.Rprofile$
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE$
+^data-raw$
+^doc$
+^distribution\.txt$
+^R/reinstall\.r$
+^cran-comments\.md$
+^README\.Rmd$
+^README-.*\.png$
