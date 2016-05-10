@@ -255,6 +255,16 @@ plot(0:1, 0:1, type="n", ann=FALSE, axes=FALSE)
 rasterImage(pp, 0, 0, 1, 1)
 ```
 
+## All Failed Periods
+```{r failedperiods, message=FALSE}
+library(dplyr)
+failed_df     <- window_df %>% filter(ending_bal <= 0) %>% arrange(wdr)
+failed_df$inv <- fmt(failed_df$inv)
+failed_df$wdr <- fmt(failed_df$wdr)
+failed_df$IRR <- ifelse(is.na(failed_df$IRR), NA, paste0(round(failed_df$IRR*100, 2), "%"))
+knitr::kable(failed_df)
+```
+
 ## Best Period 
 
 ```{r bestyearplot}
@@ -282,6 +292,18 @@ mode_year_path <- paste0(output_path,
 pp <- readPNG(mode_year_path, native = TRUE, info = TRUE)
 plot(0:1, 0:1, type="n", ann=FALSE, axes=FALSE)
 rasterImage(pp, 0, 0, 1, 1)
+```   
+
+## Middling Periods
+```{r middlingperiods, message=FALSE}
+middling_df     <- window_df %>%  arrange(ending_bal, wdr, start_year)
+lmid            <- which.min(abs(middling_df$ending_bal - closest_mod_bal))
+middling_df     <- middling_df[(lmid-2):(lmid+2),]
+middling_df$inv <- fmt(middling_df$inv)
+middling_df$wdr <- fmt(middling_df$wdr)
+middling_df$IRR <- ifelse(is.na(middling_df$IRR), NA, paste0(round(middling_df$IRR*100, 2), "%"))
+middling_df$ending_bal <- fmt(middling_df$ending_bal)
+knitr::kable(middling_df)
 ```
 
 # Inflation

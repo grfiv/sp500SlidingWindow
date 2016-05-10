@@ -11,9 +11,8 @@ This is the initial submission of the sp500SlidingWindow package.
 * For devtools::check() locally, there were no ERRORs, WARNINGs or NOTEs.
 
 * For devtools::build_win() there is consistently one NOTE   
-    * *checking CRAN incoming feasibility ... NOTE   
+    * * checking CRAN incoming feasibility ... NOTE   
     Maintainer: 'George Fisher <george@georgefisher.com>'   
-    New submission   
    
 ## Downstream dependencies
 
