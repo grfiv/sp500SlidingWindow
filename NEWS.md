@@ -8,6 +8,7 @@
     * fixed plot_ending_bal_distribution.R so it doesn't create a file in the working directory
     * added README
     * pushed to GitHub
+    * added buy_bonds function
 
 ## Initial Release 0.1.0   
 

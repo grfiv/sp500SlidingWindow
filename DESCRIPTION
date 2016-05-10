@@ -9,6 +9,8 @@ Authors@R: c(
         email = "george@georgefisher.com",
         role = c("aut", "cre"))
     )
+URL: https://github.com/grfiv/sp500SlidingWindow
+BugReports: https://github.com/grfiv/sp500SlidingWindow/issues
 License: GPL-3
 LazyData: TRUE
 Imports:
@@ -21,7 +23,10 @@ Depends:
     magrittr     (>= 1.5)
 RoxygenNote: 5.0.1
 Suggests:
+    devtools  (>= 1.11.1),
+    gridExtra (>= 2.2.1),
     knitr     (>= 1.12.3),
     rmarkdown (>= 0.9.6),
+    rvest     (>= 0.3.1),
     testthat  (>= 1.0.2)
 VignetteBuilder: knitr

@@ -3,6 +3,7 @@
 export(CAGR)
 export(SP500)
 export(SP500TR_1950)
+export(buy_bonds)
 export(calc_chg)
 export(fmt)
 export(plot_effect_of_fees)

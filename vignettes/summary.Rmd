@@ -9,6 +9,36 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+<style type="text/css">
+
+body{ /* Normal  */
+   font-size: 16px;
+}
+td {  /* Table  */
+   font-size: 10px;
+}
+h1 { /* Header 1 */
+ font-size: 28px;
+ color: DarkBlue;
+}
+h2 { /* Header 2 */
+ font-size: 22px;
+ color: DarkBlue;
+}
+h3 { /* Header 3 */
+ font-size: 18px;
+ color: DarkBlue;
+}
+code.r{ /* Code block */
+  font-size: 12px;
+}
+pre { /* Code block */
+  font-size: 16px
+}
+
+</style>
+
+
 
 ```{r knitropts, echo = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -24,9 +54,12 @@ We are facing retirement, having to live off a lump sum we have invested. How mu
 ## Parameters
 
     * we are 65 years old   
+    * we have a nest egg of $3,000,000
     * we expect to live for 30 years   
-    * we expect 2.5% annual inflation
-    * we expect to pay brokerage fees of 1.25%   
+    * we expect 2.5% annual inflation            (average since 1914 = 3.27%)
+    * we expect to pay brokerage fees of 1.25%   (US average per Morningstar) 
+    * Treasuries have a 2.16% coupon             (as of May 2016)
+    * our all-in ordinary-income tax rate is 20%
     
     
 ```{r parameters, message=FALSE}
@@ -39,11 +72,15 @@ output_path  <- paste0(tempdir(), "/")
 # analysis-specific parameters
 current_age        <- 65            # starting age
 annual_inflation   <- 0.025         # annual inflation
-initial_investment <- 2000000       # our nest egg
+initial_investment <- 3000000       # our nest egg
 
 # withdraw this much each year
 withdrawal_percent <- 0.03171
-initial_withdrawal <- initial_investment * withdrawal_percent       
+initial_withdrawal <- initial_investment * withdrawal_percent   
+
+# for bond analysis
+coupon   <- 0.0216
+tax_rate <- 0.20
 ```   
 
 ## Investment vector
@@ -53,8 +90,6 @@ We retire with this much money to live on for the rest of our 'window_width'-yea
 ```{r investmentvector}
 investment_vector <- c(initial_investment,
                        rep(0,window_width-1))
-
-fmt(investment_vector)
 ```
 
 ## Withdrawal vector
@@ -70,24 +105,22 @@ withdrawal_vector <- sapply(0:(window_width-1), function(i) {
 total_hoped_for_wdr <- sum(withdrawal_vector)
 fmt(total_hoped_for_wdr)
 
-# year-by-year hoped-for withdrawals
-fmt(withdrawal_vector)
+# print year-by-year hoped-for withdrawals
+knitr::kable(data.frame(age        = seq(current_age, current_age+window_width-1),  
+                        withdrawal = fmt(withdrawal_vector)))
+# save as image
+library(gridExtra)
+png(filename=paste0(output_path, "wdr_vector.png"), width=250, height=750)
+  grid.table(data.frame(age        = seq(current_age, current_age+window_width-1),  
+                        withdrawal = fmt(withdrawal_vector)))
+dev.off()
 ```
 
-
-# Sliding Window Analysis
-
-The idea of sliding-window analysis is to ask how a certain set of annual investments and withdrawals would perform in each of the periods of a certain width of the stock market.
-
-We are simulating a brokerage cash account so the balance can never go below zero. If the withdrawal vector calls for an amount greater than the current balance, the remaining balance is withdrawn and the balance is set to zero.
-
-The analysis invests the lump sum at the beginning of each window and tracks the effect of the stock market on that investment, making inflation-adjusted withdrawals each year. The critical question is whether the investor will run out of money.
-
-## Uninvested results
+# Keep the Money in Cash
 
 If we do not invest the lump sum but simply spend it down, what will be the result?
 
-```{r remainingbalanceplot}
+```{r remainingbalance}
 remaining_amt    <- initial_investment
 ages             <- current_age:(window_width+current_age-1)
 remaining_amount <- sapply(1:window_width, function(i) {
@@ -107,6 +140,10 @@ if (length(which(remaining_amount<=0))) {
     sub="Starting amount covers withdrawals without investment"
 }
 
+#print(remaining_amount)
+```
+
+```{r remainingbalanceplot}
 ylim <- c(min(min(remaining_amount, 0)), initial_investment)
 plot(ages, remaining_amount, pch=20,
      xlab="Age", ylab=NA, yaxt="n", ylim=ylim,
@@ -121,9 +158,70 @@ if (plot_points) {
 
 axis(2, las=2, at=axTicks(2), labels=fmt(axTicks(2)), cex.axis=0.72)
 grid()
+
+dev.copy(png, paste0(output_path, "invested_in_cash.png"))
+dev.off()
 ```
 
-# Sliding Window Analysis
+# Buy Bonds   
+
+Why not just buy a US Treasury bond, pay the taxes on the interest payments and draw down on the remainder? (Somewhat simplified because you can't sell part of a single bond, you have to buy several bonds so you can liquidate part of the portfolio when you need to.)
+
+```{r buybonds}
+bond_df <- buy_bonds(investment_vector,
+                     withdrawal_vector,
+                     coupon,
+                     tax_rate)
+
+#knitr::kable(bond_df)
+```   
+
+```{r plotbuybonds}
+pos_wd <- bond_df$bal[which(bond_df$bal > 0)]
+
+# test if we go below zero
+if (length(pos_wd) < nrow(bond_df)) {
+    # goes below zero
+    plot_points   <- TRUE
+    busted_age    <- current_age+which(bond_df$bal <= 0)[1]-1
+    sub           <- paste0("Run out of money at age ", busted_age)
+    remaining_amt <- cumsum(-withdrawal_vector[(length(pos_wd)+1):length(withdrawal_vector)])
+    ylim          <- c(min(remaining_amt), initial_investment)
+} else {
+    # does not go below zero
+    plot_points = FALSE
+    sub="Starting amount covers withdrawals without investment"
+    ylim          <- c(0, initial_investment)
+}
+
+plot(ages, bond_df$bal, type="n", pch=20,
+     xlab="Age", ylab=NA, yaxt="n", ylim=ylim,
+     main="What if I buy a bond?",
+     sub=sub)
+
+axis(2, las=2, at=axTicks(2), labels=fmt(axTicks(2)), cex.axis=0.72)
+grid()
+
+points(ages[1:length(pos_wd)], pos_wd, pch=20)
+
+if (plot_points) {
+    points(ages[(length(pos_wd)+1):nrow(bond_df)], remaining_amt, pch=20, col="red")
+    abline(h=0,          lty=2, col="red")
+    abline(v=busted_age, lty=2, col="red")
+}
+
+dev.copy(png, paste0(output_path, "invest_in_a_bond.png"))
+dev.off()
+```
+
+# Invest in the Stock Market
+
+The idea of sliding-window analysis is to ask how a certain set of annual investments and withdrawals would perform in each of the periods of a certain width of the stock market.
+
+We are simulating a brokerage cash account so the balance can never go below zero. If the withdrawal vector calls for an amount greater than the current balance, the remaining balance is withdrawn and the balance is set to zero.
+
+The analysis invests the lump sum at the beginning of each window and tracks the effect of the stock market on that investment, making inflation-adjusted withdrawals each year. The critical question is whether the investor will run out of money.   
+
 ```{r slidingwindow}
 window_df <- sp500SlidingWindow(investment_vector,
                                 withdrawal_vector,
@@ -134,7 +232,7 @@ window_df <- sp500SlidingWindow(investment_vector,
 #knitr::kable(window_df)
 ```
 
-#### Number of failed periods `r length(which(window_df$ending_bal <= 0))`; `r paste0(round((1-(length(which(window_df$ending_bal <= 0))/nrow(window_df)))*100,0), "%")` percent success
+# Number of failed periods `r length(which(window_df$ending_bal <= 0))`; `r paste0(round((1-(length(which(window_df$ending_bal <= 0))/nrow(window_df)))*100,0), "%")` percent success
 
 ## How are the results distributed?
 
@@ -185,4 +283,23 @@ plot(0:1, 0:1, type="n", ann=FALSE, axes=FALSE)
 rasterImage(pp, 0, 0, 1, 1)
 ```
 
+# Inflation
+```{r inflation, message=FALSE, warning=FALSE}
+library(rvest)
+
+inflation_table <- read_html("http://www.usinflationcalculator.com/inflation/historical-inflation-rates/") %>%
+    html_node("table") %>%
+  html_table(header = TRUE)
+
+for (col in names(inflation_table)) {
+    inflation_table[, col] <- as.numeric(inflation_table[, col])
+}
+    
+```
+## Average annual inflation rate since `r inflation_table$Year[1]`: `r paste0(round(mean(inflation_table$Ave, na.rm = TRUE), 2),"%")`
+
+# Environment
+```{r environment}
+devtools::session_info()
+```
 
