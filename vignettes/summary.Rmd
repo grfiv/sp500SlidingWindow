@@ -103,18 +103,19 @@ withdrawal_vector <- sapply(0:(window_width-1), function(i) {
 
 # total amount we hope to withdraw over the whole period
 total_hoped_for_wdr <- sum(withdrawal_vector)
-fmt(total_hoped_for_wdr)
 
 # print year-by-year hoped-for withdrawals
 knitr::kable(data.frame(age        = seq(current_age, current_age+window_width-1),  
                         withdrawal = fmt(withdrawal_vector)))
 # save as image
 library(gridExtra)
-png(filename=paste0(output_path, "wdr_vector.png"), width=250, height=750)
+png(filename=paste0(output_path, "wdr_vector.png"), width=250, height=700)
   grid.table(data.frame(age        = seq(current_age, current_age+window_width-1),  
                         withdrawal = fmt(withdrawal_vector)))
 dev.off()
 ```
+
+## Total withdrawals over `r paste0(window_width, " years: $", fmt(total_hoped_for_wdr))`
 
 # Keep the Money in Cash
 
@@ -220,7 +221,7 @@ The idea of sliding-window analysis is to ask how a certain set of annual invest
 
 We are simulating a brokerage cash account so the balance can never go below zero. If the withdrawal vector calls for an amount greater than the current balance, the remaining balance is withdrawn and the balance is set to zero.
 
-The analysis invests the lump sum at the beginning of each window and tracks the effect of the stock market on that investment, making inflation-adjusted withdrawals each year. The critical question is whether the investor will run out of money.   
+The analysis in this example invests the lump sum at the beginning of each window and tracks the effect of the stock market on that investment, making inflation-adjusted withdrawals each year. The critical question is whether the investor will run out of money in any of the periods we test.   
 
 ```{r slidingwindow}
 window_df <- sp500SlidingWindow(investment_vector,

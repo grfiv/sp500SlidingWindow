@@ -148,8 +148,6 @@ tax_rate &lt;-<span class="st"> </span><span class="fl">0.20</span></code></pre>
 
 <span class="co"># total amount we hope to withdraw over the whole period</span>
 total_hoped_for_wdr &lt;-<span class="st"> </span><span class="kw">sum</span>(withdrawal_vector)
-<span class="kw">fmt</span>(total_hoped_for_wdr)
-<span class="co">#&gt; [1] &quot;4,176,464&quot;</span>
 
 <span class="co"># print year-by-year hoped-for withdrawals</span>
 knitr::<span class="kw">kable</span>(<span class="kw">data.frame</span>(<span class="dt">age        =</span> <span class="kw">seq</span>(current_age, current_age+window_width<span class="dv">-1</span>),  
@@ -286,12 +284,15 @@ knitr::<span class="kw">kable</span>(<span class="kw">data.frame</span>(<span cl
 </table>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># save as image</span>
 <span class="kw">library</span>(gridExtra)
-<span class="kw">png</span>(<span class="dt">filename=</span><span class="kw">paste0</span>(output_path, <span class="st">&quot;wdr_vector.png&quot;</span>), <span class="dt">width=</span><span class="dv">250</span>, <span class="dt">height=</span><span class="dv">750</span>)
+<span class="kw">png</span>(<span class="dt">filename=</span><span class="kw">paste0</span>(output_path, <span class="st">&quot;wdr_vector.png&quot;</span>), <span class="dt">width=</span><span class="dv">250</span>, <span class="dt">height=</span><span class="dv">700</span>)
   <span class="kw">grid.table</span>(<span class="kw">data.frame</span>(<span class="dt">age        =</span> <span class="kw">seq</span>(current_age, current_age+window_width<span class="dv">-1</span>),  
                         <span class="dt">withdrawal =</span> <span class="kw">fmt</span>(withdrawal_vector)))
 <span class="kw">dev.off</span>()
 <span class="co">#&gt; png </span>
 <span class="co">#&gt;   2</span></code></pre></div>
+</div>
+<div id="total-withdrawals-over-30-years-4176464" class="section level2">
+<h2>Total withdrawals over 30 years: $4,176,464</h2>
 </div>
 </div>
 <div id="keep-the-money-in-cash" class="section level1">
@@ -394,7 +395,7 @@ if (plot_points) {
 <h1>Invest in the Stock Market</h1>
 <p>The idea of sliding-window analysis is to ask how a certain set of annual investments and withdrawals would perform in each of the periods of a certain width of the stock market.</p>
 <p>We are simulating a brokerage cash account so the balance can never go below zero. If the withdrawal vector calls for an amount greater than the current balance, the remaining balance is withdrawn and the balance is set to zero.</p>
-<p>The analysis invests the lump sum at the beginning of each window and tracks the effect of the stock market on that investment, making inflation-adjusted withdrawals each year. The critical question is whether the investor will run out of money.</p>
+<p>The analysis in this example invests the lump sum at the beginning of each window and tracks the effect of the stock market on that investment, making inflation-adjusted withdrawals each year. The critical question is whether the investor will run out of money in any of the periods we test.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">window_df &lt;-<span class="st"> </span><span class="kw">sp500SlidingWindow</span>(investment_vector,
                                 withdrawal_vector,
                                 <span class="dt">window_width =</span> window_width,
